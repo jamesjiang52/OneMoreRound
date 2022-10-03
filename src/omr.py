@@ -2,6 +2,7 @@ import os
 import math
 from pprint import pprint
 from steam import *
+from metacritic import *
 
 
 def print_recommendations(game_scores):
