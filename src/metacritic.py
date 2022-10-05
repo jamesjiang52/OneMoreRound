@@ -7,6 +7,7 @@ METACRITIC_ROOT = "http://metacritic.com/game/pc/"
 
 
 def get_game_ratings(name):
+    name_orig = name
     name = name.lower()
     name = name.replace(" ", "-")
     name = name.replace("& ", "")
@@ -18,8 +19,18 @@ def get_game_ratings(name):
 
     r = requests.get(METACRITIC_ROOT + name, headers=headers)
     s = BeautifulSoup(r.content, "html.parser")
-    #print(s.prettify)
-    meta_score = s.find_all("div", {"class": "metascore_w xlarge game positive"})[0]
-    user_score = s.find_all("div", {"class": "metascore_w user large game positive"})[0]
 
-    return int(meta_score.text.strip()), int(float(user_score.text.strip())*10)
+    try:
+        meta_scores = set(s.find_all("div", {"class": "metascore_w"}))
+        game = set(s.find_all("div", {"class": "game"}))
+        user = set(s.find_all("div", {"class": "user"}))
+        xlarge = set(s.find_all("div", {"class": "xlarge"}))
+        large = set(s.find_all("div", {"class": "large"}))
+
+        meta_score = int(list(meta_scores.intersection(game, xlarge))[0].text.strip())
+        user_score = int(float(list(meta_scores.intersection(game, large, user))[0].text.strip())*10)
+    except:
+        print("Can't find Metacritic reviews for game:", name_orig)
+        return 0, 0
+
+    return meta_score, user_score
