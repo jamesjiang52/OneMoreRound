@@ -2,6 +2,10 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+# requests throws SSL errors for Metacritic for some reason,
+# so turn off verification and ignore the warnings that appear as a result
+requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+
 
 METACRITIC_ROOT = "http://metacritic.com/game/pc/"
 
@@ -17,7 +21,7 @@ def get_game_ratings(name):
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
     }
 
-    r = requests.get(METACRITIC_ROOT + name, headers=headers)
+    r = requests.get(METACRITIC_ROOT + name, headers=headers, verify=False)
     s = BeautifulSoup(r.content, "html.parser")
 
     try:

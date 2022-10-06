@@ -17,11 +17,11 @@ def main():
     if cfg[0] != "### Steam API key ###" or cfg[3] != "## Steam user ID ###":
         print("cfg.txt has been incorrectly edited. Please restore a previous version.")
         exit(1)
-    
+
     if cfg[1] == "<insert Steam API key here>":
         print("Must insert Steam API key in cfg.txt")
         exit(1)
-    
+
     if cfg[4] == "<insert Steam user ID here>":
         print("Must insert Steam user ID in cfg.txt")
         exit(1)
@@ -33,7 +33,7 @@ def main():
     if not lib:
         print("Invalid Steam API key or user ID")
         exit(1)
-    
+
     # simple tag-based recommendation algorithm
     # a score is computed for every tag, indicating how much the user plays games associated with that tag
     # presumably, tags that appear more often in played games are more liked by the user
