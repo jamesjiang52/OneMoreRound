@@ -37,7 +37,7 @@ def main():
         exit(1)
 
     # simple tag-based recommendation algorithm
-    # a score is computed for every tag, indicating how much the user plays games associated with that tag
+    # a score is computed for every Steam tag, indicating how much the user plays games associated with that tag
     # presumably, tags that appear more often in played games are more liked by the user
     # tags are also weighted by the ratio of the root of the game's playtime with the user's max playtime on a single game
     tag_dict = {}
@@ -52,7 +52,8 @@ def main():
             for tag in tags:
                 tag_dict[tag] = weight if tag not in tag_dict else tag_dict[tag] + weight
 
-    # get total tag scores of games in the backlog by summing up the individual scores of the game's tags
+    # get total tag scores of games in the backlog by summing up the individual scores of the game's Steam tags
+    # also get meta (aggregate review) and user scores from Metacritic, and times to beat from HowLongToBeat (longer is better, up to 100 hours)
     max_tag_score = 0
     game_scores = []
     max_playtime = 0
@@ -62,7 +63,6 @@ def main():
             tag_score = sum([tag_dict[tag] for tag in tags if tag in tag_dict])
             meta_score, user_score = get_game_ratings(game["name"])
             time = get_game_time(game["name"])
-            time = 0 if not time else time
             max_playtime = min(100, max(time, max_playtime))
             game_scores.append((game["name"], tag_score, meta_score, user_score, time))
             max_tag_score = max(max_tag_score, tag_score)
@@ -71,12 +71,13 @@ def main():
             tag_score = sum([tag_dict[tag] for tag in tags])
             max_tag_score = max(max_tag_score, tag_score)
 
+    # choose games to recommend by multiplying all scores with each score's respective weight
     game_scores = [(score[0], score[1]*100/max_tag_score, score[2], score[3], score[4]) for score in game_scores]
     game_scores.sort(key=lambda item: STEAM_TAG_WEIGHT*item[1] + META_SCORE_WEIGHT*item[2] + USER_SCORE_WEIGHT*item[3] + GAME_TIME_WEIGHT*(item[4]/max_playtime), reverse=True)
 
     print("You might enjoy these games in your backlog:")
     for i in range(min(10, len(game_scores))):
-        print("\t{:50} (Steam tag score: {:5.1f}, Metacritic meta score: {}, Metacritic user score: {}, Completion time: {})".format(*game_scores[i]))
+        print("\t{:50} (Steam tag score: {:5.1f}, Metacritic meta score: {}, Metacritic user score: {}, Completion time: {} hours)".format(*game_scores[i]))
 
     exit(0)
 
