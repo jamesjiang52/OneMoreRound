@@ -28,7 +28,7 @@ def display_recommendations(event):
     META_SCORE_WEIGHT = metacritic_select_int.get()
     USER_SCORE_WEIGHT = 1 - META_SCORE_WEIGHT if META_SCORE_WEIGHT != 0 else 0
     GAME_TIME_WEIGHT = playtime_select_int.get()
-    
+
     count_0 = [STEAM_TAG_WEIGHT, META_SCORE_WEIGHT, GAME_TIME_WEIGHT].count(0)
     if count_0 != 3:
         STEAM_TAG_WEIGHT /= (3 - count_0)
@@ -74,16 +74,10 @@ def display_recommendations(event):
     # choose games to recommend by multiplying all scores with each score's respective weight
     game_scores = [(score[0], score[1]*100/max_tag_score, score[2], score[3], score[4]) for score in game_scores]
     game_scores.sort(key=lambda item: STEAM_TAG_WEIGHT*item[1] + META_SCORE_WEIGHT*item[2] + USER_SCORE_WEIGHT*item[3] + GAME_TIME_WEIGHT*(item[4]/max_playtime), reverse=True)
-    
+
     recommend.delete(*recommend.get_children())
     for i in range(min(10, len(game_scores))):
-        recommend.insert(parent="", index="end", iid=i, text="", values=("{:5.1f}".format(game_scores[i][0]), *game_scores[i][1:]))
-    
-    """
-    print("You might enjoy these games in your backlog:")
-    for i in range(min(10, len(game_scores))):
-        print("\t{:50} (Steam tag score: {:5.1f}, Metacritic meta score: {}, Metacritic user score: {}, Completion time: {} hours)".format(*game_scores[i]))
-    """
+        recommend.insert(parent="", index="end", iid=i, text="", values=(game_scores[i][0], "{:.1f}".format(game_scores[i][1]), *game_scores[i][2:4], "{:.1f} hours".format(game_scores[i][4])))
 
 
 def main():
@@ -164,11 +158,11 @@ def main():
 
     recommend_frame = tk.Frame()
     recommend_frame.grid(row=1, column=2)
-    
+
     get_recommend_button = tk.Button(master=recommend_frame, text="Get backlog recommendations!")
     get_recommend_button.grid(row=0, column=0)
     get_recommend_button.bind("<Button-1>", display_recommendations)
-    
+
     recommend = ttk.Treeview(master=recommend_frame, height=20)
     recommend["columns"] = ("name", "tag score", "meta score", "user score", "completion time")
     recommend.column("#0", width=0, stretch=tk.NO)
