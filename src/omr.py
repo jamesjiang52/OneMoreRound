@@ -1,40 +1,40 @@
 import os
 import math
-from pprint import pprint
+import tkinter as tk
+from tkinter import ttk
 from steam import *
 from metacritic import *
 from hltb import *
 
 
-STEAM_TAG_WEIGHT = 0.5
-META_SCORE_WEIGHT = 0.2
-USER_SCORE_WEIGHT = 0.1
-GAME_TIME_WEIGHT = 0.2
+def display_user_library(event):
+    global lib
 
-
-def main():
-    pwd = os.path.dirname(__file__)
-    cfg = [line.strip() for line in open("{}/cfg.txt".format(pwd), "r")]
-
-    if cfg[0] != "### Steam API key ###" or cfg[3] != "## Steam user ID ###":
-        print("cfg.txt has been incorrectly edited. Please restore a previous version.")
-        exit(1)
-
-    if cfg[1] == "<insert Steam API key here>":
-        print("Must insert Steam API key in cfg.txt")
-        exit(1)
-
-    if cfg[4] == "<insert Steam user ID here>":
-        print("Must insert Steam user ID in cfg.txt")
-        exit(1)
-
-    STEAM_API_KEY = cfg[1]
-    STEAM_USER_ID = cfg[4]
+    STEAM_API_KEY = api_key_field.get()
+    STEAM_USER_ID = steam_id_field.get()
 
     lib = get_user_library(STEAM_API_KEY, STEAM_USER_ID)
     if not lib:
         print("Invalid Steam API key or user ID")
         exit(1)
+
+    library.delete(*library.get_children())
+    for i in range(len(lib)):
+        library.insert(parent="", index="end", iid=i, text="", values=(lib[i]["name"], "{:.1f} hours".format(lib[i]["playtime"]/60)))
+
+
+def display_recommendations(event):
+    STEAM_TAG_WEIGHT = tag_select_int.get()
+    META_SCORE_WEIGHT = metacritic_select_int.get()
+    USER_SCORE_WEIGHT = 1 - META_SCORE_WEIGHT if META_SCORE_WEIGHT != 0 else 0
+    GAME_TIME_WEIGHT = playtime_select_int.get()
+    
+    count_0 = [STEAM_TAG_WEIGHT, META_SCORE_WEIGHT, GAME_TIME_WEIGHT].count(0)
+    if count_0 != 3:
+        STEAM_TAG_WEIGHT /= (3 - count_0)
+        META_SCORE_WEIGHT /= (3 - count_0)
+        USER_SCORE_WEIGHT /= (3 - count_0)
+        GAME_TIME_WEIGHT /= (3 - count_0)
 
     # simple tag-based recommendation algorithm
     # a score is computed for every Steam tag, indicating how much the user plays games associated with that tag
@@ -74,12 +74,124 @@ def main():
     # choose games to recommend by multiplying all scores with each score's respective weight
     game_scores = [(score[0], score[1]*100/max_tag_score, score[2], score[3], score[4]) for score in game_scores]
     game_scores.sort(key=lambda item: STEAM_TAG_WEIGHT*item[1] + META_SCORE_WEIGHT*item[2] + USER_SCORE_WEIGHT*item[3] + GAME_TIME_WEIGHT*(item[4]/max_playtime), reverse=True)
-
+    
+    recommend.delete(*recommend.get_children())
+    for i in range(min(10, len(game_scores))):
+        recommend.insert(parent="", index="end", iid=i, text="", values=("{:5.1f}".format(game_scores[i][0]), *game_scores[i][1:]))
+    
+    """
     print("You might enjoy these games in your backlog:")
     for i in range(min(10, len(game_scores))):
         print("\t{:50} (Steam tag score: {:5.1f}, Metacritic meta score: {}, Metacritic user score: {}, Completion time: {} hours)".format(*game_scores[i]))
+    """
 
-    exit(0)
+
+def main():
+    global api_key_field
+    global steam_id_field
+    global library
+    global tag_select_int
+    global metacritic_select_int
+    global playtime_select_int
+    global recommend
+
+    window = tk.Tk()
+    window.title("OneMoreRound")
+
+    cfg_frame = tk.Frame()
+    cfg_frame.grid(row=0, column=0)
+
+    api_key_label = tk.Label(master=cfg_frame, text="Steam API key:")
+    api_key_label.grid(row=0, column=0)
+    api_key_field = tk.Entry(master=cfg_frame, width=40)
+    api_key_field.grid(row=0, column=1)
+
+    steam_id_label = tk.Label(master=cfg_frame, text="Steam ID:")
+    steam_id_label.grid(row=1, column=0)
+    steam_id_field = tk.Entry(master=cfg_frame, width=40)
+    steam_id_field.grid(row=1, column=1)
+
+    lib_frame = tk.Frame()
+    lib_frame.grid(row=1, column=0)
+
+    get_lib_button = tk.Button(master=lib_frame, text="Get Steam library")
+    get_lib_button.grid(row=0, column=0)
+    get_lib_button.bind("<Button-1>", display_user_library)
+
+    library = ttk.Treeview(master=lib_frame, height=20)
+    library["columns"] = ("name", "playtime")
+    library.column("#0", width=0, stretch=tk.NO)
+    library.column("name", anchor=tk.CENTER, width=200)
+    library.column("playtime", anchor=tk.CENTER, width=80)
+    library.heading("#0", text="", anchor=tk.CENTER)
+    library.heading("name", text="Game", anchor=tk.CENTER)
+    library.heading("playtime", text="Playtime", anchor=tk.CENTER)
+    library.grid(row=1, column=0)
+
+    lib_scrollx = tk.Scrollbar(master=lib_frame, orient=tk.HORIZONTAL, command=library.xview)
+    lib_scrolly = tk.Scrollbar(master=lib_frame, orient=tk.VERTICAL, command=library.yview)
+    lib_scrollx.grid(row=1, column=0, sticky="ews")
+    lib_scrolly.grid(row=1, column=1, sticky="nse")
+    library.configure(xscroll=lib_scrollx.set, yscroll=lib_scrolly.set)
+
+    select_frame = tk.Frame()
+    select_frame.grid(row=1, column=1)
+
+    tag_select_label = tk.Label(master=select_frame, text="Select Steam tag option:")
+    tag_select_label.pack()
+    tag_select_int = tk.IntVar()
+    tk.Radiobutton(master=select_frame, text="Give me something I'd like!", variable=tag_select_int, value=1).pack(anchor=tk.W)
+    tk.Radiobutton(master=select_frame, text="Give me something new!", variable=tag_select_int, value=-1).pack(anchor=tk.W)
+    tk.Radiobutton(master=select_frame, text="I don't care about Steam tags", variable=tag_select_int, value=0).pack(anchor=tk.W)
+    tag_select_int.set(0)
+
+    metacritic_select_label = tk.Label(master=select_frame, text="Select Metacritic option:")
+    metacritic_select_label.pack()
+    metacritic_select_int = tk.DoubleVar()
+    tk.Radiobutton(master=select_frame, text="Higher meta score", variable=metacritic_select_int, value=0.8).pack(anchor=tk.W)
+    tk.Radiobutton(master=select_frame, text="Higher user score", variable=metacritic_select_int, value=0.2).pack(anchor=tk.W)
+    tk.Radiobutton(master=select_frame, text="Weigh both Metacritic scores equally", variable=metacritic_select_int, value=0.5).pack(anchor=tk.W)
+    tk.Radiobutton(master=select_frame, text="I don't care about Metacritic scores", variable=metacritic_select_int, value=0).pack(anchor=tk.W)
+    metacritic_select_int.set(0)
+
+    playtime_select_label = tk.Label(master=select_frame, text="Select completion time option:")
+    playtime_select_label.pack()
+    playtime_select_int = tk.IntVar()
+    tk.Radiobutton(master=select_frame, text="Give me a long one!", variable=playtime_select_int, value=1).pack(anchor=tk.W)
+    tk.Radiobutton(master=select_frame, text="Give me something short and sweet!", variable=playtime_select_int, value=-1).pack(anchor=tk.W)
+    tk.Radiobutton(master=select_frame, text="I don't care about completion time", variable=playtime_select_int, value=0).pack(anchor=tk.W)
+    playtime_select_int.set(0)
+
+    recommend_frame = tk.Frame()
+    recommend_frame.grid(row=1, column=2)
+    
+    get_recommend_button = tk.Button(master=recommend_frame, text="Get backlog recommendations!")
+    get_recommend_button.grid(row=0, column=0)
+    get_recommend_button.bind("<Button-1>", display_recommendations)
+    
+    recommend = ttk.Treeview(master=recommend_frame, height=20)
+    recommend["columns"] = ("name", "tag score", "meta score", "user score", "completion time")
+    recommend.column("#0", width=0, stretch=tk.NO)
+    recommend.column("name", anchor=tk.CENTER, width=200)
+    recommend.column("tag score", anchor=tk.CENTER, width=100)
+    recommend.column("meta score", anchor=tk.CENTER, width=80)
+    recommend.column("user score", anchor=tk.CENTER, width=80)
+    recommend.column("completion time", anchor=tk.CENTER, width=100)
+    recommend.heading("#0", text="", anchor=tk.CENTER)
+    recommend.heading("name", text="Game", anchor=tk.CENTER)
+    recommend.heading("tag score", text="Steam tag score", anchor=tk.CENTER)
+    recommend.heading("meta score", text="Meta score", anchor=tk.CENTER)
+    recommend.heading("user score", text="User score", anchor=tk.CENTER)
+    recommend.heading("completion time", text="Completion time", anchor=tk.CENTER)
+    recommend.grid(row=1, column=0)
+
+    recommend_scrollx = tk.Scrollbar(master=recommend_frame, orient=tk.HORIZONTAL, command=recommend.xview)
+    recommend_scrolly = tk.Scrollbar(master=recommend_frame, orient=tk.VERTICAL, command=recommend.yview)
+    recommend_scrollx.grid(row=1, column=0, sticky="ews")
+    recommend_scrolly.grid(row=1, column=1, sticky="nse")
+    recommend.configure(xscroll=recommend_scrollx.set, yscroll=recommend_scrolly.set)
+
+    window.mainloop()
 
 
 if __name__ == "__main__":
