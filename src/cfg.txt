@@ -1,5 +1,0 @@
-### Steam API key ###
-<insert Steam API key here>
-
-## Steam user ID ###
-<insert Steam user ID here>
