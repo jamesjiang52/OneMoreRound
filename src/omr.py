@@ -29,6 +29,7 @@ def display_recommendations(event):
     USER_SCORE_WEIGHT = 1 - META_SCORE_WEIGHT if META_SCORE_WEIGHT != 0 else 0
     GAME_TIME_WEIGHT = playtime_select_int.get()
 
+    # weigh all 3 score types equally, unless user specifies otherwise
     count_0 = [STEAM_TAG_WEIGHT, META_SCORE_WEIGHT, GAME_TIME_WEIGHT].count(0)
     if count_0 != 3:
         STEAM_TAG_WEIGHT /= (3 - count_0)
@@ -63,6 +64,11 @@ def display_recommendations(event):
             tag_score = sum([tag_dict[tag] for tag in tags if tag in tag_dict])
             meta_score, user_score = get_game_ratings(game["name"])
             time = get_game_time(game["name"])
+
+            # don't include games with no Metacritic or HowLongToBeat info
+            if time == 0 or (meta_score == 0 and user_score == 0):
+                continue
+
             max_playtime = min(100, max(time, max_playtime))
             game_scores.append((game["name"], tag_score, meta_score, user_score, time))
             max_tag_score = max(max_tag_score, tag_score)
@@ -106,7 +112,7 @@ def main():
     steam_id_field.grid(row=1, column=1)
 
     lib_frame = tk.Frame()
-    lib_frame.grid(row=1, column=0)
+    lib_frame.grid(row=1, column=1)
 
     get_lib_button = tk.Button(master=lib_frame, text="Get Steam library")
     get_lib_button.grid(row=0, column=0)
@@ -129,18 +135,21 @@ def main():
     library.configure(xscroll=lib_scrollx.set, yscroll=lib_scrolly.set)
 
     select_frame = tk.Frame()
-    select_frame.grid(row=1, column=1)
+    select_frame.grid(row=1, column=0)
+    
+    recommend_select_label = tk.Label(master=select_frame, text="Recommendation options", font=(None, 12))
+    recommend_select_label.pack()
 
-    tag_select_label = tk.Label(master=select_frame, text="Select Steam tag option:")
-    tag_select_label.pack()
+    tag_select_label = tk.Label(master=select_frame, text="Steam tags:")
+    tag_select_label.pack(pady=(10, 0))
     tag_select_int = tk.IntVar()
     tk.Radiobutton(master=select_frame, text="Give me something I'd like!", variable=tag_select_int, value=1).pack(anchor=tk.W)
     tk.Radiobutton(master=select_frame, text="Give me something new!", variable=tag_select_int, value=-1).pack(anchor=tk.W)
     tk.Radiobutton(master=select_frame, text="I don't care about Steam tags", variable=tag_select_int, value=0).pack(anchor=tk.W)
     tag_select_int.set(0)
 
-    metacritic_select_label = tk.Label(master=select_frame, text="Select Metacritic option:")
-    metacritic_select_label.pack()
+    metacritic_select_label = tk.Label(master=select_frame, text="Metacritic:")
+    metacritic_select_label.pack(pady=(10, 0))
     metacritic_select_int = tk.DoubleVar()
     tk.Radiobutton(master=select_frame, text="Higher meta score", variable=metacritic_select_int, value=0.8).pack(anchor=tk.W)
     tk.Radiobutton(master=select_frame, text="Higher user score", variable=metacritic_select_int, value=0.2).pack(anchor=tk.W)
@@ -148,8 +157,8 @@ def main():
     tk.Radiobutton(master=select_frame, text="I don't care about Metacritic scores", variable=metacritic_select_int, value=0).pack(anchor=tk.W)
     metacritic_select_int.set(0)
 
-    playtime_select_label = tk.Label(master=select_frame, text="Select completion time option:")
-    playtime_select_label.pack()
+    playtime_select_label = tk.Label(master=select_frame, text="Completion time:")
+    playtime_select_label.pack(pady=(10, 0))
     playtime_select_int = tk.IntVar()
     tk.Radiobutton(master=select_frame, text="Give me a long one!", variable=playtime_select_int, value=1).pack(anchor=tk.W)
     tk.Radiobutton(master=select_frame, text="Give me something short and sweet!", variable=playtime_select_int, value=-1).pack(anchor=tk.W)
@@ -167,10 +176,10 @@ def main():
     recommend["columns"] = ("name", "tag score", "meta score", "user score", "completion time")
     recommend.column("#0", width=0, stretch=tk.NO)
     recommend.column("name", anchor=tk.CENTER, width=200)
-    recommend.column("tag score", anchor=tk.CENTER, width=100)
+    recommend.column("tag score", anchor=tk.CENTER, width=110)
     recommend.column("meta score", anchor=tk.CENTER, width=80)
     recommend.column("user score", anchor=tk.CENTER, width=80)
-    recommend.column("completion time", anchor=tk.CENTER, width=100)
+    recommend.column("completion time", anchor=tk.CENTER, width=120)
     recommend.heading("#0", text="", anchor=tk.CENTER)
     recommend.heading("name", text="Game", anchor=tk.CENTER)
     recommend.heading("tag score", text="Steam tag score", anchor=tk.CENTER)
