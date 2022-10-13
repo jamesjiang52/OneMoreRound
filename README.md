@@ -29,7 +29,7 @@ Then install the required Python packages:
 Run:
 
 ```
-./onemoreround.sh
+>> ./onemoreround.sh
 ```
 
 A GUI will open. First, fill in your Steam API key and Steam ID in their corresponding fields. For details on obtaining these, consult [this](https://steamcommunity.com/dev) and [this](https://help.steampowered.com/en/faqs/view/2816-BE67-5B69-0FEC).
